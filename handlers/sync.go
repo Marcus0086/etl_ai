@@ -27,7 +27,7 @@ func SyncHandler(event *core.ServeEvent) error {
 		if err != nil {
 			return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		}
-		go orchestrator.StartEtlWorkflow(connectionRecord)
+		go orchestrator.StartEtlWorkflow(&app, connectionRecord)
 		return ctx.JSON(http.StatusCreated, map[string]string{"status": "started etl workflow for connection:" + connectionId})
 	}, apis.RequireRecordAuth("users"), apis.ActivityLogger(app))
 	return nil
