@@ -1,0 +1,34 @@
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - /var/run/docker.sock.raw:/var/run/docker.sock
+      - pocketbase_data:/pb_data
+      - data:/root/assets
+    restart: always
+    networks:
+      - network
+    command: ./server serve --http=0.0.0.0:8000
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    ports:
+      - "15672:15672"
+    networks:
+      - network
+    restart: always
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+
+networks:
+  network:
+    driver: bridge
+
+volumes:
+  pocketbase_data:
+    driver: local
+  data:
+    driver: local
