@@ -48,7 +48,7 @@ func ConnectionHandler(event *core.ServeEvent) error {
 			return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		}
 
-		if err := orchestrator.ConfigureOrchestrator(record); err != nil {
+		if err := orchestrator.ConfigureOrchestrator(&app, record); err != nil {
 			return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		}
 		return ctx.JSON(http.StatusCreated, map[string]string{"id": record.Id})
