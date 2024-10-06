@@ -14,19 +14,26 @@ import (
 const (
 	chunkSize  = 1024 * 1024 // 1MB
 	numWorkers = 4           // Number of worker goroutines
-	queueName  = "extractor_queue"
 )
 
 func main() {
 	log.Println("Extractor started")
 
+	connectionId := os.Getenv("CONNECTION_ID")
+	if connectionId == "" {
+		log.Fatal("CONNECTION_ID environment variable not set")
+	}
+
+	log.Printf("Using connection ID: %s", connectionId)
+
+	queueName := "file_extractor_" + connectionId
 	mqClient, err := messagequeues.New()
 	if err != nil {
 		log.Fatalf("Failed to connect to message queue: %v", err)
 	}
 	defer mqClient.Close()
 
-	extractFile("assets/data/big.txt", mqClient)
+	extractFile("assets/data/big.txt", mqClient, queueName)
 
 	ch, err := mqClient.NewChannel()
 	if err != nil {
@@ -47,7 +54,7 @@ func main() {
 	log.Println("Extraction complete.")
 }
 
-func extractFile(filePath string, mqClient *messagequeues.RabbitMQClient) {
+func extractFile(filePath string, mqClient *messagequeues.RabbitMQClient, queueName string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	file, err := os.Open(filePath)
@@ -57,7 +64,7 @@ func extractFile(filePath string, mqClient *messagequeues.RabbitMQClient) {
 	defer file.Close()
 
 	wp := wokrerpool.New[[]byte](numWorkers)
-	workerFunc := createWorkerFunc(mqClient)
+	workerFunc := createWorkerFunc(mqClient, queueName)
 	wp.Start(ctx, workerFunc)
 
 	reader := bufio.NewReader(file)
@@ -80,7 +87,7 @@ func extractFile(filePath string, mqClient *messagequeues.RabbitMQClient) {
 	wp.Stop()
 }
 
-func createWorkerFunc(mqClient *messagequeues.RabbitMQClient) wokrerpool.WorkerFunc[[]byte] {
+func createWorkerFunc(mqClient *messagequeues.RabbitMQClient, queueName string) wokrerpool.WorkerFunc[[]byte] {
 	return func(workerID int, chunk []byte) error {
 		ch, err := mqClient.NewChannel()
 		if err != nil {
