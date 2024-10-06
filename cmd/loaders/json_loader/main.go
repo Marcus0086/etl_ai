@@ -10,6 +10,15 @@ import (
 func main() {
 	log.Println("Loader started")
 
+	connectionId := os.Getenv("CONNECTION_ID")
+	if connectionId == "" {
+		log.Fatal("CONNECTION_ID environment variable not set")
+	}
+
+	log.Printf("Using connection ID: %s", connectionId)
+
+	queueName := "file_extractor_" + connectionId
+
 	mqClient, err := messagequeues.New()
 	if err != nil {
 		log.Fatalf("Failed to connect to message queue: %v", err)
@@ -20,14 +29,14 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create channel: %v", err)
 	}
-
-	outputFile, err := os.OpenFile("assets/data/output.json", os.O_CREATE|os.O_WRONLY, 0644)
+	outputFileName := "assets/data/" + connectionId + ".json"
+	outputFile, err := os.OpenFile(outputFileName, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatalf("Failed to open output file: %v", err)
 	}
 	defer outputFile.Close()
 
-	msgs, err := mqClient.Consume(channel, "extractor_queue")
+	msgs, err := mqClient.Consume(channel, queueName)
 	if err != nil {
 		log.Fatalf("Failed to consume messages: %v", err)
 	}
