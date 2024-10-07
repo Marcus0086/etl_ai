@@ -75,8 +75,8 @@ func StartEtlWorkflow(app *core.App, connection *models.Record) {
 			},
 			Cmd:         []string{},
 			Network:     "etl_network",
-			MemoryLimit: 512 * 1024 * 1024,
-			CPUShares:   2,
+			MemoryLimit: 1024 * 1024 * 1024,
+			CPUShares:   4,
 			Mounts:      []string{"/root/assets"},
 		},
 		{
