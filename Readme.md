@@ -27,7 +27,7 @@ This ETL pipeline system provides a flexible framework for extracting data from 
 
 ## Architecture Overview
 
-![Architecture Diagram](path/to/architecture-diagram.png)
+![Architecture Diagram](public/images/etl.png)
 
 The system consists of the following key components:
 
