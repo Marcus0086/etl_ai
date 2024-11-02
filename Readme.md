@@ -1,10 +1,9 @@
-# ETL Pipeline System
+# FormData ETL Pipeline System
 
-This project is an Extract, Transform, Load (ETL) pipeline system built with Go, PocketBase, Docker, and RabbitMQ. It is designed to be modular, scalable, and capable of handling various data synchronization strategies, including full overrides, incremental syncs, and deduplication.
+A simple Extract, Transform, Load (ETL) pipeline system designed to be modular, scalable, and capable of handling various data synchronization strategies, including full overrides, incremental syncs, and deduplication.
 
 ## Table of Contents
 
-- [Introduction](#introduction)
 - [Architecture Overview](#architecture-overview)
 - [Components](#components)
   - [PocketBase Server](#pocketbase-server)
@@ -20,10 +19,6 @@ This project is an Extract, Transform, Load (ETL) pipeline system built with Go,
   - [Defining Sources and Loaders](#defining-sources-and-loaders)
   - [Creating Connections](#creating-connections)
   - [Running ETL Jobs](#running-etl-jobs)
-
-## Introduction
-
-This ETL pipeline system provides a flexible framework for extracting data from various sources, transforming it, and loading it into different targets. It leverages PocketBase as an admin interface and data store, uses Docker to containerize extractors and loaders, and employs RabbitMQ for message queuing between components.
 
 ## Architecture Overview
 
@@ -104,6 +99,7 @@ RabbitMQ is used as a message broker to facilitate communication between extract
 ```bash
 docker compose up --build -d // this will build the server image and start the server and rabbitmq
 ```
+
 2. Build extractors and loaders
 
 ```bash
@@ -116,9 +112,10 @@ docker compose up --build -d // this will build the server image and start the s
 
 ## Usage
 
-* Create a new admin account on pocketbase installer at localhost:8090/_
-* Inside the dashboard create a new user record under user collection.
-* Get authorization token for the user from admin api.
+- Create a new admin account on pocketbase installer at localhost:8090/\_
+- Inside the dashboard create a new user record under user collection.
+- Get authorization token for the user from admin api.
+
 ```bash
 curl -X POST "http://localhost:8090/api/collections/users/auth-with-password" \
 -H "Content-Type: application/json" \
@@ -128,39 +125,51 @@ curl -X POST "http://localhost:8090/api/collections/users/auth-with-password" \
 ### Defining Source and Loaders
 
 > Create a Source
+
 ```bash
-curl -X POST "{{etl_backend}}/api/source" \
+curl -X POST "{{formdata_backend}}/api/source" \
 -H "Authorization: {{user_token}}" \
 -H "Content-Type: application/json" \
--d '{ "name": "my_extractor", "type": "file_extractor", "config": {} }'
+-d '{ "name": "extractor_name", "type": "file_extractor", "config": {} }'
 
 ```
 
 > Create a Loader
 
 ```bash
-curl -X POST "{{etl_backend}}/api/loader" \
+curl -X POST "{{formdata_backend}}/api/loader" \
 -H "Authorization: {{user_token}}" \
 -H "Content-Type: application/json" \
--d '{ "name": "my_loader", "type": "json_loader", "config": {} }'
+-d '{ "name": "loader_name", "type": "json_loader", "config": {} }'
 
 ```
 
 ### Creating Connections
 
+Manual sync
+
 ```bash
-curl -X POST "{{etl_backend}}/api/connection" \
+curl -X POST "{{formdata_backend}}/api/connection" \
 -H "Authorization: {{user_token}}" \
 -H "Content-Type: application/json" \
--d '{ "source_id": "ftjagtp7kmnr0ow", "loader_id": "kf1ljoa5jkx93jc", "sync_type": "manual", "config": {} }'
+-d '{ "source_id": "source_id", "loader_id": "loader_id", "sync_type": "manual", "config": {} }'
+```
+
+Scheduled sync
+
+```bash
+curl -X POST "{{formdata_backend}}/api/connection" \
+-H "Authorization: {{user_token}}" \
+-H "Content-Type: application/json" \
+-d '{ "source_id": "source_id", "loader_id": "loader_id", "sync_type": "scheduled", "schedule": "* * * * *", "config": {} }'
 ```
 
 ### Running ETL Jobs
 
 ```bash
-curl -X POST "{{etl_backend}}/api/sync" \
+curl -X POST "{{formdata_backend}}/api/sync" \
 -H "Authorization: {{user_token}}" \
 -H "Content-Type: application/json" \
--d '{ "connection_id": "s241kqmo3kv8mby" }'
+-d '{ "connection_id": "connection_id" }'
 
 ```
