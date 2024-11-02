@@ -3,7 +3,10 @@ WORKDIR /app
 COPY go.mod ./
 COPY go.sum ./
 RUN go mod download
-COPY . .
+COPY pkg/ ./pkg/
+COPY cmd/server/ ./cmd/server/
+COPY handlers/ ./handlers/
+COPY routes/ ./routes/
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-s -w" -o server ./cmd/server
 
 FROM alpine:latest
