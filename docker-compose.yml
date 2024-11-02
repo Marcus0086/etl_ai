@@ -11,6 +11,8 @@ services:
     networks:
       - network
     command: ./server serve --http=0.0.0.0:8000
+    env_file:
+      - .env
 
   rabbitmq:
     image: rabbitmq:4-management
