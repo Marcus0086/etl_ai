@@ -3,12 +3,13 @@ package main
 import (
 	"bufio"
 	"context"
-	"etl/pkg/messagequeues"
-	"etl/pkg/wokrerpool"
 	"io"
 	"log"
 	"os"
-	"time"
+
+	"formdata/pkg/messagequeues"
+	"formdata/pkg/utils"
+	"formdata/pkg/wokrerpool"
 )
 
 const (
@@ -64,7 +65,7 @@ func extractFile(filePath string, mqClient *messagequeues.RabbitMQClient, queueN
 	defer file.Close()
 
 	wp := wokrerpool.New[[]byte](numWorkers)
-	workerFunc := createWorkerFunc(mqClient, queueName)
+	workerFunc := utils.CreateWorkerFunc(mqClient, queueName, "assets/data/big.txt", "extractor")
 	wp.Start(ctx, workerFunc)
 
 	reader := bufio.NewReader(file)
@@ -85,31 +86,4 @@ func extractFile(filePath string, mqClient *messagequeues.RabbitMQClient, queueN
 		wp.Submit(chunk)
 	}
 	wp.Stop()
-}
-
-func createWorkerFunc(mqClient *messagequeues.RabbitMQClient, queueName string) wokrerpool.WorkerFunc[[]byte] {
-	return func(workerID int, chunk []byte) error {
-		ch, err := mqClient.NewChannel()
-		if err != nil {
-			log.Printf("Worker %d: Failed to create channel: %v", workerID, err)
-			return err
-		}
-		defer ch.Close()
-
-		msg := messagequeues.ETLMessage{
-			Data: chunk,
-			MetaData: messagequeues.MetaData{
-				Source:      "assets/data/big.txt",
-				Destination: "extractor",
-			},
-			CreatedAt: time.Now(),
-			UpdateAt:  time.Now(),
-		}
-		err = mqClient.Publish(ch, queueName, msg)
-		if err != nil {
-			log.Printf("Worker %d: Failed to publish message: %v", workerID, err)
-			return err
-		}
-		return nil
-	}
 }
