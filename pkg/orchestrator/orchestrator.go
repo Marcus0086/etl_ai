@@ -1,22 +1,22 @@
 package orchestrator
 
 import (
-	"etl/pkg/dockermanager"
 	"log"
 	"sync"
-	"time"
 
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/models"
 	"github.com/pocketbase/pocketbase/tools/cron"
+
+	"formdata/pkg/dockermanager"
 )
 
 var (
 	sources = map[string]string{
-		"file_extractor": "etl-extractor:latest",
+		"file_extractor": "formdata-extractor:latest",
 	}
 	loaders = map[string]string{
-		"json_loader": "etl-loader:latest",
+		"json_loader": "formdata-loader:latest",
 	}
 )
 
@@ -24,8 +24,7 @@ func ConfigureOrchestrator(app *core.App, connection *models.Record) error {
 	syncType := connection.GetString("sync_type")
 	switch syncType {
 	case "manual":
-		// Do something
-		// return nil
+		return nil
 	case "scheduled":
 		schedule := connection.GetString("schedule")
 		go scheduler(app, connection, schedule)
@@ -49,7 +48,14 @@ func scheduler(app *core.App, connection *models.Record, schedule string) {
 func StartEtlWorkflow(app *core.App, connection *models.Record) {
 	sourceId := connection.GetStringSlice("source_id")[0]
 	loaderId := connection.GetStringSlice("loader_id")[0]
-	log.Println("Starting ETL Workflow for connection", connection.Id, "Source ID:", sourceId, "Loader ID:", loaderId)
+	log.Println(
+		"Starting ETL Workflow for connection",
+		connection.Id,
+		"Source ID:",
+		sourceId,
+		"Loader ID:",
+		loaderId,
+	)
 	pbApp := *app
 	sourceRecord, err := pbApp.Dao().FindRecordById("sources", sourceId)
 	if err != nil {
@@ -74,10 +80,11 @@ func StartEtlWorkflow(app *core.App, connection *models.Record) {
 				"SOURCE_ID=" + sourceId,
 			},
 			Cmd:         []string{},
-			Network:     "etl_network",
+			Network:     "formdata_network",
 			MemoryLimit: 1024 * 1024 * 1024,
 			CPUShares:   4,
 			Mounts:      []string{"/root/assets"},
+			AutoRemove:  true,
 		},
 		{
 			Image: loaderImage,
@@ -87,10 +94,11 @@ func StartEtlWorkflow(app *core.App, connection *models.Record) {
 				"LOADER_ID=" + loaderId,
 			},
 			Cmd:         []string{},
-			Network:     "etl_network",
+			Network:     "formdata_network",
 			MemoryLimit: 256 * 1024 * 1024,
 			CPUShares:   1,
 			Mounts:      []string{"/root/assets"},
+			AutoRemove:  true,
 		},
 	}
 
@@ -108,15 +116,4 @@ func StartEtlWorkflow(app *core.App, connection *models.Record) {
 		}(config)
 	}
 	wg.Wait()
-
-	time.Sleep(2 * time.Second)
-
-	for _, containerID := range containerIDs {
-		err := dockermanager.StopContainer(containerID)
-		if err != nil {
-			log.Printf("Failed to stop container %s: %v", containerID, err)
-		} else {
-			log.Printf("Stopped container %s", containerID)
-		}
-	}
 }
