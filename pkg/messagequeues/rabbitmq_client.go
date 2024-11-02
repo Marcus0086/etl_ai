@@ -6,6 +6,8 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
+var RABBITMQ_URL = "amqp://guest:guest@rabbitmq:5672/"
+
 type RabbitMQClient struct {
 	connection *amqp.Connection
 }
@@ -15,7 +17,7 @@ func (r *RabbitMQClient) NewChannel() (*amqp.Channel, error) {
 }
 
 func New() (*RabbitMQClient, error) {
-	conn, err := amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
+	conn, err := amqp.Dial(RABBITMQ_URL)
 	if err != nil {
 		return nil, err
 	}
