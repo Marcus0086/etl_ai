@@ -24,6 +24,7 @@ type ContainerConfig struct {
 	Ports       map[string]string
 	MemoryLimit int64
 	CPUShares   int64
+	AutoRemove  bool
 }
 
 func StartContainer(config *ContainerConfig) (string, error) {
@@ -51,7 +52,7 @@ func StartContainer(config *ContainerConfig) (string, error) {
 	for i, m := range config.Mounts {
 		mounts[i] = mount.Mount{
 			Type:   mount.TypeVolume,
-			Source: "etl_data",
+			Source: "formdata_data",
 			Target: m,
 		}
 	}
@@ -65,7 +66,8 @@ func StartContainer(config *ContainerConfig) (string, error) {
 			Memory:   config.MemoryLimit,
 			NanoCPUs: config.CPUShares * 1e9,
 		},
-		Mounts: mounts,
+		Mounts:     mounts,
+		AutoRemove: config.AutoRemove,
 	}
 
 	for hostPort, containerPort := range config.Ports {
