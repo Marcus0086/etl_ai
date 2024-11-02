@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"etl/pkg/messagequeues"
+	"formdata/pkg/messagequeues"
 	"log"
 	"os"
 )

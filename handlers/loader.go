@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	requestModels "etl/pkg/models"
+	requestModels "formdata/pkg/models"
 	"net/http"
 
 	"github.com/labstack/echo/v5"

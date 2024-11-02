@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
-	"etl/pkg/db"
-	"etl/routes"
+	"formdata/pkg/db"
+	"formdata/routes"
 	"log"
 	"net/http"
 	"os"
