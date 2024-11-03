@@ -2,13 +2,16 @@ package orchestrator
 
 import (
 	"log"
+	"maps"
 	"sync"
 
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/models"
 	"github.com/pocketbase/pocketbase/tools/cron"
+	"github.com/pocketbase/pocketbase/tools/types"
 
 	"formdata/pkg/dockermanager"
+	"formdata/pkg/utils"
 )
 
 var (
@@ -66,19 +69,44 @@ func StartEtlWorkflow(app *core.App, connection *models.Record) {
 		log.Fatal(err)
 	}
 
-	sourceImage := sources[sourceRecord.GetString("type")]
-	loaderImage := loaders[loaderRecord.GetString("type")]
+	sourceType := sourceRecord.GetString("type")
+	loaderType := loaderRecord.GetString("type")
+
+	sourceConfigJsonRaw := sourceRecord.Get("config").(types.JsonRaw)
+	sourceConfig, err := utils.ParseConfig(sourceType, sourceConfigJsonRaw)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	loaderConfigJsonRaw := loaderRecord.Get("config").(types.JsonRaw)
+	loaderConfig, err := utils.ParseConfig(loaderType, loaderConfigJsonRaw)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	sourceImage := sources[sourceType]
+	loaderImage := loaders[loaderType]
 
 	log.Println("Source and Loader Image loaded:", sourceImage, loaderImage)
+	sourceEnv := map[string]string{
+		"CONNECTION_ID": connection.Id,
+		"SOURCE_ID":     sourceId,
+		"QUEUE_NAME":    sourceType + "_" + connection.Id,
+	}
+	maps.Copy(sourceEnv, utils.ConfigToEnv(sourceConfig))
+
+	loaderEnv := map[string]string{
+		"CONNECTION_ID": connection.Id,
+		"LOADER_ID":     loaderId,
+		"QUEUE_NAME":    sourceType + "_" + connection.Id,
+	}
+	maps.Copy(loaderEnv, utils.ConfigToEnv(loaderConfig))
 
 	containerConfigs := []dockermanager.ContainerConfig{
 		{
-			Image: sourceImage,
-			Name:  sourceId,
-			Env: []string{
-				"CONNECTION_ID=" + connection.Id,
-				"SOURCE_ID=" + sourceId,
-			},
+			Image:       sourceImage,
+			Name:        sourceId,
+			Env:         utils.BuildContainerEnv(sourceEnv),
 			Cmd:         []string{},
 			Network:     "formdata_network",
 			MemoryLimit: 1024 * 1024 * 1024,
@@ -87,12 +115,9 @@ func StartEtlWorkflow(app *core.App, connection *models.Record) {
 			AutoRemove:  true,
 		},
 		{
-			Image: loaderImage,
-			Name:  loaderId,
-			Env: []string{
-				"CONNECTION_ID=" + connection.Id,
-				"LOADER_ID=" + loaderId,
-			},
+			Image:       loaderImage,
+			Name:        loaderId,
+			Env:         utils.BuildContainerEnv(loaderEnv),
 			Cmd:         []string{},
 			Network:     "formdata_network",
 			MemoryLimit: 256 * 1024 * 1024,
