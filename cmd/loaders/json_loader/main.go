@@ -2,7 +2,8 @@ package main
 
 import (
 	"encoding/json"
-	"formdata/pkg/messagequeues"
+	"formdata/pkg/models"
+	"formdata/pkg/utils"
 	"log"
 	"os"
 )
@@ -10,33 +11,24 @@ import (
 func main() {
 	log.Println("Loader started")
 
-	connectionId := os.Getenv("CONNECTION_ID")
-	if connectionId == "" {
-		log.Fatal("CONNECTION_ID environment variable not set")
-	}
-
-	log.Printf("Using connection ID: %s", connectionId)
-
-	queueName := "file_extractor_" + connectionId
-
-	mqClient, err := messagequeues.New()
+	etlProcess, err := utils.NewETLProcess("json_loader")
 	if err != nil {
-		log.Fatalf("Failed to connect to message queue: %v", err)
+		log.Fatalf("Failed to create ETL process: %v", err)
 	}
-	defer mqClient.Close()
+	defer etlProcess.Cleanup()
 
-	channel, err := mqClient.NewChannel()
+	channel, err := etlProcess.MqClient.NewChannel()
 	if err != nil {
 		log.Fatalf("Failed to create channel: %v", err)
 	}
-	outputFileName := "assets/data/" + connectionId + ".json"
+	outputFileName := etlProcess.Config.(*models.JsonLoaderConfig).Path + etlProcess.ConnectionID + ".json"
 	outputFile, err := os.OpenFile(outputFileName, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatalf("Failed to open output file: %v", err)
 	}
 	defer outputFile.Close()
 
-	msgs, err := mqClient.Consume(channel, queueName)
+	msgs, err := etlProcess.MqClient.Consume(channel, etlProcess.QueueName)
 	if err != nil {
 		log.Fatalf("Failed to consume messages: %v", err)
 	}

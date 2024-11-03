@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"formdata/pkg/messagequeues"
+	"formdata/pkg/models"
 	"formdata/pkg/utils"
 	"formdata/pkg/wokrerpool"
 )
@@ -20,36 +21,22 @@ const (
 func main() {
 	log.Println("Extractor started")
 
-	connectionId := os.Getenv("CONNECTION_ID")
-	if connectionId == "" {
-		log.Fatal("CONNECTION_ID environment variable not set")
-	}
-
-	log.Printf("Using connection ID: %s", connectionId)
-
-	queueName := "file_extractor_" + connectionId
-	mqClient, err := messagequeues.New()
+	etlProcess, err := utils.NewETLProcess("file_extractor")
 	if err != nil {
-		log.Fatalf("Failed to connect to message queue: %v", err)
+		log.Fatalf("Failed to create ETL process: %v", err)
 	}
-	defer mqClient.Close()
+	defer etlProcess.Cleanup()
+	extractFile(etlProcess.Config.(*models.FileExtractorConfig).URL, etlProcess.MqClient, etlProcess.QueueName)
 
-	extractFile("assets/data/big.txt", mqClient, queueName)
-
-	ch, err := mqClient.NewChannel()
+	ch, err := etlProcess.MqClient.NewChannel()
 	if err != nil {
 		log.Printf("Failed to create channel: %v", err)
 		return
 	}
 	defer ch.Close()
 
-	endMessage := messagequeues.ETLMessage{
-		IsEnd: true,
-	}
-
-	err = mqClient.Publish(ch, queueName, endMessage)
-	if err != nil {
-		log.Printf("Failed to publish end message: %v", err)
+	if err := etlProcess.SendEndMessage(); err != nil {
+		log.Printf("Failed to send end message: %v", err)
 	}
 
 	log.Println("Extraction complete.")
@@ -74,16 +61,14 @@ func extractFile(filePath string, mqClient *messagequeues.RabbitMQClient, queueN
 	for {
 		n, err := reader.Read(buffer)
 		if err != nil {
-			if err == io.EOF {
+			if err == io.EOF || err == io.ErrUnexpectedEOF {
 				break
 			}
 			log.Printf("Error reading file: %v", err)
 			continue
 		}
-		chunk := make([]byte, n)
-		copy(chunk, buffer[:n])
 
-		wp.Submit(chunk)
+		wp.Submit(buffer[:n])
 	}
 	wp.Stop()
 }
