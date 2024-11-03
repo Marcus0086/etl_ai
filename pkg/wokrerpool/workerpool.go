@@ -48,8 +48,7 @@ func (wp *WorkerPool[T]) worker(ctx context.Context, workerID int, workerFunc Wo
 			if !ok {
 				return
 			}
-			err := workerFunc(workerID, job)
-			if err != nil {
+			if err := workerFunc(workerID, job); err != nil {
 				wp.mu.Lock()
 				defer wp.mu.Unlock()
 				wp.errors = append(wp.errors, err)
